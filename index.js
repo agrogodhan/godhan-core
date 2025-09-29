@@ -1,5 +1,5 @@
 const { initDB } = require("./db/connection");
-const { authMiddleware } = require("./middleware/auth");
+const { authMiddleware } = require("./middlewares/auth");
 const { initConfig, getConfig } = require("./utils/config");
 const { successResponse, errorResponse } = require("./utils/response");
 
