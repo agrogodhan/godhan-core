@@ -1,0 +1,33 @@
+// {
+//   "name": "wallet-service",
+//   "version": "1.0.0",
+//   "main": "index.js",
+//   "scripts": {
+//     "start": "node index.js",
+//     "dev": "nodemon index.js"
+//   },
+//   "dependencies": {
+//     "body-parser": "^1.20.2",
+//     "cors": "^2.8.5",
+//     "dotenv": "^16.0.3",
+//     "express": "^4.18.2",
+//     "jsonwebtoken": "^9.0.0",
+//     "mongoose": "^7.6.0"
+//   },
+//   "devDependencies": {
+//     "nodemon": "^3.0.1"
+//   }
+// }
+
+{
+  "name": "@godhan/core",
+  "version": "1.0.0",
+  "description": "Godhan core shared utilities (DB, auth, config, response)",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^7.6.0"
+  }
+}
+
