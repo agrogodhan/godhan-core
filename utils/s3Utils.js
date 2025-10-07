@@ -1,7 +1,7 @@
-import fs from "fs";
-import path from "path";
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+const fs = require("fs");
+const path = require("path");
+const { S3Client, PutObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
 /**
  * Create an S3 utility instance.
@@ -13,15 +13,17 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
  * @param {number} [config.bufferThreshold=52428800] - Threshold (in bytes) to switch to stream mode (default 50MB)
  * @returns {Object} - S3 utility methods
  */
-export const createS3Util = ({
+function createS3Util({
   region,
   accessKeyId,
   secretAccessKey,
   bucket,
   bufferThreshold = 50 * 1024 * 1024, // 50MB
-}) => {
+}){
   if (!region || !accessKeyId || !secretAccessKey || !bucket) {
-    throw new Error("Missing required S3 configuration parameters");
+    throw new Error(
+      `Missing required S3 configuration parameters: region=${region}, accessKeyId=${accessKeyId}, secretAccessKey=${secretAccessKey}, bucket=${bucket}`
+    );
   }
 
   const s3 = new S3Client({
@@ -205,3 +207,5 @@ export const createS3Util = ({
     deleteFromS3,
   };
 };
+
+module.exports = { createS3Util };

@@ -88,7 +88,7 @@ console.log("Email Result:", result);
 
 
 // Upload Images/Video/pdf or asset to S3
-import { createS3Util } from "@yourorg/s3-utils";
+import { createS3Util } from "@godhan/core";
 
 const s3Util = createS3Util({
   region: "ap-south-1",
