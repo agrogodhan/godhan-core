@@ -6,7 +6,10 @@
   "license": "MIT",
   "dependencies": {
     "aws-sdk": "^2.1692.0",
+    "express-handlebars": "^8.0.3",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^7.6.0"
+    "mongoose": "^7.6.0",
+    "nodemailer": "^7.0.9",
+    "nodemailer-express-handlebars": "^7.0.0"
   }
 }

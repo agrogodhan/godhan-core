@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Welcome to Godhan</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f7f7f7;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: #ffffff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    .header {
+      background: #2e7d32;
+      color: #ffffff;
+      padding: 20px;
+      text-align: center;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+    .content {
+      padding: 20px;
+      color: #333333;
+      line-height: 1.6;
+    }
+    .btn {
+      display: inline-block;
+      padding: 12px 24px;
+      margin: 20px 0;
+      background: #2e7d32;
+      color: #ffffff !important;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: bold;
+    }
+    .footer {
+      background: #f1f1f1;
+      padding: 15px;
+      text-align: center;
+      font-size: 12px;
+      color: #777777;
+    }
+    @media (max-width: 600px) {
+      .container {
+        width: 95% !important;
+      }
+      .btn {
+        display: block;
+        width: 100%;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1>👋 Welcome, {{name}}</h1>
+    </div>
+
+    <!-- Body -->
+    <div class="content">
+      <p>We’re thrilled to have you join <b>Godhan</b>!</p>
+      <p>
+        Please confirm your account so we can start helping you manage your cattle & dairy operations more efficiently.
+      </p>
+
+      <!-- Call to Action -->
+      <a href="{{link}}" class="btn">Verify Account</a>
+
+      <p>If the button doesn’t work, copy & paste this link into your browser:</p>
+      <p><a href="{{link}}">{{link}}</a></p>
+
+      <hr style="margin:30px 0; border:0; border-top:1px solid #eee;" />
+
+      <p>💡 Pro Tip: Stay active to earn <b>coins</b> and unlock farmer rewards.</p>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>© {{year}} Godhan. All rights reserved.</p>
+      <p>You received this email because you signed up for Godhan App.</p>
+    </div>
+  </div>
+</body>
+</html>
