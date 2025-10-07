@@ -58,7 +58,7 @@ export const createS3Util = ({
       // Use stream mode for large files
       params.Body = fs.createReadStream(file.path);
     } else {
-      params.Body = file.buffer || fs.createReadStream(file.path);
+      params.Body = file.buffer || (file.path && fs.createReadStream(file.path));
     }
 
     await s3.send(new PutObjectCommand(params));
@@ -66,22 +66,93 @@ export const createS3Util = ({
   };
 
   /**
-   * Stream data directly from S3 (for video playback or file download)
-   * @param {Object} res - Express response object
+   * Stream file from S3 to an Express response, supporting Range requests.
+   * @param {Object} res - Express response
    * @param {string} key - S3 object key
+   * @param {Object} [options]
+   * @param {Object} [req] - Express request (optional, used to read Range header)
    */
-  const streamFromS3 = async (res, key) => {
+  const streamFromS3 = async (res, key, options = {}, req = null) => {
     try {
-      const command = new GetObjectCommand({ Bucket: bucket, Key: key });
-      const { Body, ContentType, ContentLength } = await s3.send(command);
+      // Obtain metadata (content-length, content-type)
+      const head = await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+      const fileSize = head.ContentLength;
+      const contentType = head.ContentType || "application/octet-stream";
 
-      res.setHeader("Content-Type", ContentType || "application/octet-stream");
-      res.setHeader("Content-Length", ContentLength);
-      if (Body && Body.pipe) Body.pipe(res);
-      else res.status(500).json({ error: "No stream available from S3" });
+      // If request provided and has Range header, handle partial content
+      const rangeHeader = req && req.headers && req.headers.range;
+      if (rangeHeader) {
+        // Parse "bytes=start-end"
+        const matches = /bytes=(\d*)-(\d*)/.exec(rangeHeader);
+        if (!matches) {
+          res.status(416).setHeader("Content-Range", `bytes */${fileSize}`);
+          return res.end();
+        }
+
+        let start = matches[1] === "" ? undefined : parseInt(matches[1], 10);
+        let end = matches[2] === "" ? undefined : parseInt(matches[2], 10);
+
+        if (start === undefined && end !== undefined) {
+          // suffix-length: last `end` bytes
+          start = Math.max(fileSize - end, 0);
+          end = fileSize - 1;
+        } else if (start !== undefined && end === undefined) {
+          end = fileSize - 1;
+        }
+
+        // Validate range
+        if (start >= fileSize || end >= fileSize || start > end) {
+          res.status(416).setHeader("Content-Range", `bytes */${fileSize}`);
+          return res.end();
+        }
+
+        const contentLength = end - start + 1;
+        const s3Range = `bytes=${start}-${end}`;
+
+        const command = new GetObjectCommand({ Bucket: bucket, Key: key, Range: s3Range });
+        const data = await s3.send(command);
+
+        res.status(206);
+        res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
+        res.setHeader("Accept-Ranges", "bytes");
+        res.setHeader("Content-Length", contentLength);
+        res.setHeader("Content-Type", contentType);
+
+        // Body from aws sdk V3 is a stream (Readable) — pipe it
+        if (data.Body && data.Body.pipe) {
+          data.Body.pipe(res);
+        } else {
+          // fallback: collect buffer and send
+          const chunks = [];
+          for await (const chunk of data.Body) chunks.push(chunk);
+          res.end(Buffer.concat(chunks));
+        }
+      } else {
+        // No Range header — return full file
+        const command = new GetObjectCommand({ Bucket: bucket, Key: key });
+        const data = await s3.send(command);
+
+        res.status(200);
+        res.setHeader("Content-Length", fileSize);
+        res.setHeader("Content-Type", contentType);
+        res.setHeader("Accept-Ranges", "bytes");
+
+        if (data.Body && data.Body.pipe) {
+          data.Body.pipe(res);
+        } else {
+          const chunks = [];
+          for await (const chunk of data.Body) chunks.push(chunk);
+          res.end(Buffer.concat(chunks));
+        }
+      }
     } catch (err) {
-      console.error("Error streaming from S3:", err);
-      res.status(404).json({ error: "File not found" });
+      // Map common errors
+      if (err.name === "NotFound" || err.$metadata?.httpStatusCode === 404) {
+        res.status(404).json({ error: "File not found" });
+      } else {
+        console.error("streamFromS3 error:", err);
+        res.status(500).json({ error: "Failed to stream file" });
+      }
     }
   };
 
