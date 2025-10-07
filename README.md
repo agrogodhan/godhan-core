@@ -85,4 +85,43 @@ const result = await sendEmail(
   }
 );
 console.log("Email Result:", result);
+
+
+// Upload Images/Video/pdf or asset to S3
+import { createS3Util } from "@yourorg/s3-utils";
+
+const s3Util = createS3Util({
+  region: "ap-south-1",
+  accessKeyId: process.env.AWS_ACCESS_KEY,
+  secretAccessKey: process.env.AWS_SECRET_KEY,
+  bucket: "my-bucket",
+});
+
+// for single video/image/ assets
+let path = "/user/images"
+const key = await s3Util.uploadToS3(req.file, path);
+
+// for multiple images/video/ assets
+let path = "/user/images"
+const keys = await s3Util.uploadToS3(req.files, "images");
+
+await s3Util.deleteFromS3("videos/sample.mp4");
+// or multiple
+await s3Util.deleteFromS3(["videos/1.mp4", "videos/2.mp4"]);
+
+// inside an Express route
+router.get("/video/:key", async (req, res) => {
+  await s3Util.streamFromS3(res, `videos/${req.params.key}`);
+});
+
+// call from app
+GET /video/1696697771234_demo.mp4
+
+/**
+ * s3Util.uploadToS3,          // handles both single/multiple uploads
+  s3Util.uploadSingle,    // optional handle single upload
+    s3Util.getSignedReadUrl, // for read signed URLs 
+    s3Util.getSignedUploadUrl,  // for upload signed URLs
+ * /
+
 ```
