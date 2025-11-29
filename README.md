@@ -12,14 +12,14 @@ Shared core utilities for Godhan microservices.
 ### Usage
 
 ```javascript
-const {
+import {
   initDB,
   initConfig,
   authMiddleware,
   getConfig,
   successResponse,
   errorResponse,
-} = require("@godhan/core");
+} from "@godhan/core";
 
 // DB connection
 const connection = await initDB(process.env.MONGO_URI);

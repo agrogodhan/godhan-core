@@ -5,8 +5,7 @@ function initConfig(connection) {
     key: { type: String, unique: true },
     value: String,
     type: { type: String, enum: ["string", "number", "boolean"], default: "string" },
-    updatedAt: { type: Date, default: Date.now }
-  });
+  }, { timestamps: true });
   ConfigModel = connection.model("Config", schema, "configs");
 }
 
@@ -22,4 +21,6 @@ async function getConfig(key, defaultValue) {
   }
 }
 
-module.exports = { initConfig, getConfig };
+const config = { initConfig, getConfig };
+
+export default config;

@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from 'mongoose';
 
 let isConnected = false;
 
@@ -15,4 +15,4 @@ async function initDB(uri) {
   return mongoose.connection;
 }
 
-module.exports = { initDB };
+export default initDB;
