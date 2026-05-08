@@ -1,57 +1,65 @@
-import aws from 'aws-sdk';
+import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import coreLogger from './logger.js';
 
-async function uploadToS3({ s3Client, bucket, key, buffer, contentType, acl = 'private' }) {
+/**
+ * AWS S3 utilities (SDK v3) — no credentials stored here.
+ * Caller creates and passes an S3Client instance.
+ *
+ * Usage:
+ *   import { S3Client } from '@aws-sdk/client-s3';
+ *   const s3Client = new S3Client({
+ *     region: process.env.AWS_REGION,
+ *     credentials: { accessKeyId: process.env.AWS_ACCESS_KEY_ID, secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY },
+ *   });
+ *
+ *   await core.utils.s3.uploadToS3({ s3Client, bucket, key, buffer, contentType, logger: appLogger });
+ *   const url = await core.utils.s3.getPresignedUrlView({ s3Client, bucket, key, expiresIn: 3600 });
+ */
+
+async function uploadToS3({ s3Client, bucket, key, buffer, contentType, acl, logger = coreLogger }) {
   if (!s3Client) {
-    console.log('[core.s3] mock upload', { bucket, key, size: buffer ? buffer.length : 0 });
+    logger.warn('[core.s3] no client — mock upload', { bucket, key, size: buffer?.length ?? 0 });
     return { ok: true, mock: true, key };
   }
-  const params = {
+
+  const command = new PutObjectCommand({
     Bucket: bucket,
     Key: key,
     Body: buffer,
     ContentType: contentType,
-    ACL: acl
-  };
-  return s3Client.upload(params).promise();
-}
-
-function getPresignedUrlUpload({ s3Client, bucket, key, contentType, expiresIn = 300 }) {
-  if (!s3Client) {
-    return { ok: true, mock: true, url: `https://mock-s3/${bucket}/${key}` };
-  }
-  const params = { Bucket: bucket, Key: key, Expires: expiresIn, ContentType: contentType };
-  if (typeof s3Client.getSignedUrlPromise === 'function') {
-    return s3Client.getSignedUrlPromise('putObject', params);
-  }
-  return new Promise((resolve, reject) => {
-    s3Client.getSignedUrl('putObject', params, (err, url) => {
-      if (err) return reject(err);
-      resolve(url);
-    });
+    ...(acl && { ACL: acl }),
   });
+
+  return s3Client.send(command);
 }
 
-function getPresignedUrlView({ s3Client, bucket, key, expiresIn = 300 }) {
-  if (!s3Client) return { ok: true, mock: true, url: `https://mock-s3/${bucket}/${key}` };
-  const params = { Bucket: bucket, Key: key, Expires: expiresIn };
-  if (typeof s3Client.getSignedUrlPromise === 'function') {
-    return s3Client.getSignedUrlPromise('getObject', params);
-  }
-  return new Promise((resolve, reject) => {
-    s3Client.getSignedUrl('getObject', params, (err, url) => {
-      if (err) return reject(err);
-      resolve(url);
-    });
-  });
-}
-
-async function deleteFromS3({ s3Client, bucket, key }) {
+async function getPresignedUrlUpload({ s3Client, bucket, key, contentType, expiresIn = 300 }) {
   if (!s3Client) {
-    console.log('[core.s3] mock delete', { bucket, key });
+    return `https://mock-s3/${bucket}/${key}`;
+  }
+
+  const command = new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType });
+  return getSignedUrl(s3Client, command, { expiresIn });
+}
+
+async function getPresignedUrlView({ s3Client, bucket, key, expiresIn = 300 }) {
+  if (!s3Client) {
+    return `https://mock-s3/${bucket}/${key}`;
+  }
+
+  const command = new GetObjectCommand({ Bucket: bucket, Key: key });
+  return getSignedUrl(s3Client, command, { expiresIn });
+}
+
+async function deleteFromS3({ s3Client, bucket, key, logger = coreLogger }) {
+  if (!s3Client) {
+    logger.warn('[core.s3] no client — mock delete', { bucket, key });
     return { ok: true, mock: true };
   }
-  const params = { Bucket: bucket, Key: key };
-  return s3Client.deleteObject(params).promise();
+
+  const command = new DeleteObjectCommand({ Bucket: bucket, Key: key });
+  return s3Client.send(command);
 }
 
 const s3Utils = { uploadToS3, getPresignedUrlUpload, getPresignedUrlView, deleteFromS3 };

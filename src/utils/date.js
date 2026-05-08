@@ -1,23 +1,13 @@
-import moment from "moment-timezone";
+import moment from 'moment-timezone';
+
+const TZ = 'Asia/Kolkata';
 
 const dateUtils = {
-  // Returns current IST datetime as a JS Date object
-  now: () => {
-    return moment().tz("Asia/Kolkata").toDate();
-  },
+  now: () => moment().tz(TZ).toDate(),
 
-  // Adds days and returns IST Date object
-  addDays: (d, days) => {
-    return moment(d)
-      .tz("Asia/Kolkata")
-      .add(days, "days")
-      .toDate();
-  },
+  addDays: (d, days) => moment(d).tz(TZ).add(days, 'days').toDate(),
 
-  // Format IST date into readable string
-  format: (d, formatStr = "YYYY-MM-DD HH:mm:ss") => {
-    return moment(d).tz("Asia/Kolkata").format(formatStr);
-  }
+  format: (d, formatStr = 'YYYY-MM-DD HH:mm:ss') => moment(d).tz(TZ).format(formatStr),
 };
 
 export default dateUtils;

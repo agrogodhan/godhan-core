@@ -3,32 +3,47 @@ import winston from 'winston';
 const { createLogger, transports, format } = winston;
 
 /**
- * Creates a logger instance.
- * 
- * @param {Object} opts
- *  - level: log level (info, debug, warn, error)
- *  - service: name of service using logger
- *  - json: enable JSON logs
+ * Create a Winston logger instance.
+ * No config stored — caller provides all options.
+ *
+ * Usage (in service server.js):
+ *   const logger = core.utils.createAppLogger({
+ *     level: process.env.LOG_LEVEL || 'info',
+ *     service: 'user-service',
+ *     pretty: process.env.LOG_PRETTY === 'true',
+ *   });
+ *
+ * @param {Object}  opts
+ *   level   {string}  Log level: error | warn | info | debug (default 'info')
+ *   service {string}  Service name added to every log entry (default 'godhan-core')
+ *   pretty  {boolean} Human-readable colorized output instead of JSON (default false)
  */
 export function createAppLogger({
-  level = 'info',           // default fallback
-  service = 'godhan-core',  // default fallback
-  json = true
+  level = 'info',
+  service = 'godhan-core',
+  pretty = false,
 } = {}) {
-  const logFormat = json
+  const shared = [
+    format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    format.errors({ stack: true }),
+    format.splat(),
+  ];
+
+  const logFormat = pretty
     ? format.combine(
-        format.timestamp(),
-        format.errors({ stack: true }),
-        format.metadata({ fillExcept: ['message', 'level', 'timestamp', 'service'] }),
-        format.json()
-      )
-    : format.combine(
         format.colorize(),
-        format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+        ...shared,
         format.printf((info) => {
           const msg = typeof info.message === 'string' ? info.message : JSON.stringify(info.message);
-          return `[${info.timestamp}] [${service}] ${info.level}: ${msg}`;
+          const { timestamp, level, message, service: _s, stack, ...rest } = info;
+          const extra = Object.keys(rest).length ? ` ${JSON.stringify(rest)}` : '';
+          const stackStr = stack ? `\n${stack}` : '';
+          return `[${timestamp}] [${service}] ${level}: ${msg}${extra}${stackStr}`;
         })
+      )
+    : format.combine(
+        ...shared,
+        format.json()
       );
 
   return createLogger({
@@ -37,19 +52,13 @@ export function createAppLogger({
     format: logFormat,
     transports: [
       new transports.Console({
-        handleExceptions: true
-      })
-    ]
+        handleExceptions: true,
+        handleRejections: true,
+      }),
+    ],
   });
 }
 
-/**
- * Default logger instance used internally in core
- * When a service imports without arguments,
- * core logger will still work safely.
- */
 const logger = createAppLogger();
 
 export default logger;
-
-

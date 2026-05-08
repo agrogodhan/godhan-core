@@ -1,13 +1,26 @@
-/** Middleware to validate request body against a Joi schema */
-import response from "../http/response.js";
+import response from '../http/response.js';
 
-export default (schema) => (req, res, next) => {
-  const { error, value } = schema.validate(req.body);
+/**
+ * Request validation middleware factory using Joi schemas.
+ *
+ * Usage:
+ *   router.post('/register', validate(schema), handler);              // validates req.body (default)
+ *   router.get('/users',     validate(schema, 'query'), handler);     // validates req.query
+ *   router.get('/users/:id', validate(schema, 'params'), handler);    // validates req.params
+ *
+ * Returns all validation errors at once (abortEarly: false).
+ * On failure: 400 with { data: [error messages], message: 'Validation failed' }
+ */
+export default function validate(schema, target = 'body') {
+  return function validateMiddleware(req, res, next) {
+    const { error, value } = schema.validate(req[target], { abortEarly: false });
 
-  if (error) {
-    return response.error(res, error.details[0].message, 400);
-  }
+    if (error) {
+      const messages = error.details.map((d) => d.message);
+      return response.error(res, messages, 'Validation failed', 400);
+    }
 
-  req.body = value;
-  return next();
-};
+    req[target] = value;
+    return next();
+  };
+}
