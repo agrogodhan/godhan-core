@@ -1,4 +1,5 @@
 // ── DB ──────────────────────────────────────────────────────────────────────
+import mongoose        from 'mongoose';
 import connectMongo    from './src/db/mongo.js';
 import connectRedis    from './src/db/redis.js';
 
@@ -40,6 +41,13 @@ const core = {
   db: {
     connectMongo,
     connectRedis,
+    // The SAME mongoose instance connectMongo connects — every service must define its models
+    // against this one (`const mongoose = core.db.mongoose`), not its own `import mongoose from
+    // "mongoose"`. Node resolves a service's own `mongoose` dependency to a physically separate
+    // package copy from godhan-core's (different node_modules tree), which means a separate,
+    // never-connected default connection registry — models defined against it hang forever on
+    // any query ("buffering timed out") even though connectMongo logs a successful connection.
+    mongoose,
   },
   http: {
     response,

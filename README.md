@@ -1,127 +1,112 @@
 # @godhan/core
 
-Shared core utilities for Godhan microservices.
+Shared utilities for Godhan Node.js microservices — DB connections, auth, HTTP responses,
+security, and misc. platform utilities. Ships as **ESM only** (`"type": "module"`); consuming
+services must be ESM too (`"type": "module"` in their own `package.json`).
 
-### Features
+Nothing here stores secrets or config — every function takes what it needs (URIs, secrets,
+clients) as arguments from the caller's own environment. This keeps `@godhan/core` a pure
+utility layer with no hidden per-service state.
 
-- MongoDB connection (`initDB`)
-- Auth middleware (`authMiddleware`)
-- Config management (`initConfig`, `getConfig`)
-- Unified API response (`successResponse`, `errorResponse`)
+## Usage
 
-### Usage
+Everything is exposed as a single namespaced default export:
 
 ```javascript
-import {
-  initDB,
-  initConfig,
-  authMiddleware,
-  getConfig,
-  successResponse,
-  errorResponse,
-} from "@godhan/core";
-
-// DB connection
-const connection = await initDB(process.env.MONGO_URI);
-initConfig(connection);
-
-// Auth middleware
-app.use(authMiddleware);
-
-// Example API
-app.get("/test", async (req, res) => {
-  const cashbackPercent = await getConfig("CASHBACK_PERCENT", 2);
-  return successResponse(res, { cashbackPercent }, "Fetched config");
-});
-
-// Send mail with plain text
-const result = await sendEmail(
-  {
-    host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
-    secure: process.env.SMTP_SECURE === "true", // true for 465, false for 587
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  },
-  {
-    to: "user@example.com",
-    subject: "Invoice Attached",
-    text: "Please find your invoice attached.",
-    attachments: [
-      {
-        filename: "invoice.pdf",
-        path: "./files/invoice.pdf", // local file
-      },
-    ],
-  }
-);
-console.log("Email Result:", result);
-// send mail with template
-
-const result = await sendEmail(
-  {
-    host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
-    secure: process.env.SMTP_SECURE === "true", // true for 465, false for 587
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  },
-  {
-    to: "user@example.com",
-    subject: "Welcome with Logo",
-    template: "welcome",
-    context: { name: "Shashank" },
-    attachments: [
-      {
-        filename: "logo.png",
-        path: "./files/logo.png",
-        cid: "logo", // same as cid in template
-      },
-    ],
-  }
-);
-console.log("Email Result:", result);
-
-
-// Upload Images/Video/pdf or asset to S3
-import { createS3Util } from "@godhan/core";
-
-const s3Util = createS3Util({
-  region: "ap-south-1",
-  accessKeyId: process.env.AWS_ACCESS_KEY,
-  secretAccessKey: process.env.AWS_SECRET_KEY,
-  bucket: "my-bucket",
-});
-
-// for single video/image/ assets
-let path = "/user/images"
-const key = await s3Util.uploadToS3(req.file, path);
-
-// for multiple images/video/ assets
-let path = "/user/images"
-const keys = await s3Util.uploadToS3(req.files, "images");
-
-await s3Util.deleteFromS3("videos/sample.mp4");
-// or multiple
-await s3Util.deleteFromS3(["videos/1.mp4", "videos/2.mp4"]);
-
-// inside an Express route
-router.get("/video/:key", async (req, res) => {
-  await s3Util.streamFromS3(res, `videos/${req.params.key}`);
-});
-
-// call from app
-GET /video/1696697771234_demo.mp4
-
-/**
- * s3Util.uploadToS3,          // handles both single/multiple uploads
-  s3Util.uploadSingle,    // optional handle single upload
-    s3Util.getSignedReadUrl, // for read signed URLs 
-    s3Util.getSignedUploadUrl,  // for upload signed URLs
- * /
-
+import core from "@godhan/core";
 ```
+
+There are **no other named exports** — always go through `core.<namespace>.<fn>`.
+
+### `core.db`
+
+```javascript
+const conn = await core.db.connectMongo({ uri: process.env.MONGO_URI, logger: appLogger });
+const redis = await core.db.connectRedis({ url: process.env.REDIS_URL, enabled: true, logger: appLogger });
+```
+- `connectMongo` retries with a fixed delay (`retryMs`, default 2000ms) up to `maxRetries` (default 10) before throwing.
+- `connectRedis` returns a full no-op mock (same method surface) when `enabled` is false or omitted, so service code doesn't need to branch on whether Redis is configured.
+
+### `core.http`
+
+```javascript
+core.http.response.success(res, data, message, statusCode);   // default message "Success", 200
+core.http.response.error(res, data, message, statusCode);     // default message "Something went wrong", 500
+
+app.use(core.http.createErrorHandler(appLogger));  // register LAST — returns a 4-arg Express error middleware
+
+const client = core.http.apiClient("http://cattle-service", () => process.env.SERVICE_TOKEN, { logger: appLogger });
+```
+
+### `core.middleware`
+
+```javascript
+const requireAuth = core.middleware.createAuth(process.env.JWT_SECRET); // sets req.user on success
+app.use(requireAuth);
+
+app.use(core.middleware.trace);                          // sets req.traceId, echoes X-Trace-Id
+app.use(core.middleware.createRequestLogger(appLogger));  // per-request access log + metrics
+app.use(core.middleware.asyncHandler(fn));                // wrap an async route handler
+
+router.delete("/users/:id", requireAuth, core.middleware.role("admin"), handler);
+router.post("/register", core.middleware.validate(joiSchema), handler); // validates req.body by default
+```
+
+### `core.security`
+
+```javascript
+const token = core.security.jwt.sign(payload, { secret, expiresIn: "15m" });
+const decoded = core.security.jwt.verify(token, { secret });
+
+const hashed = await core.security.hashUtils.hash(plain, saltRounds);
+const ok = await core.security.hashUtils.compare(plain, hashed);
+
+const sig = core.security.hmac.createSignature(rawBody, webhookSecret);
+const valid = core.security.hmac.verifySignature(rawBody, signature, webhookSecret);
+```
+
+### `core.utils`
+
+```javascript
+const logger = core.utils.createAppLogger({ service: "user-service", level: "info", pretty: true });
+
+core.utils.date.now();
+core.utils.date.addDays(date, 7);
+core.utils.date.format(date, "YYYY-MM-DD");
+
+await core.utils.s3.uploadToS3({ s3Client, bucket, key, buffer, contentType });
+await core.utils.s3.getPresignedUrlUpload({ s3Client, bucket, key, contentType });
+await core.utils.s3.getPresignedUrlView({ s3Client, bucket, key });
+await core.utils.s3.deleteFromS3({ s3Client, bucket, key });
+// s3Client is a caller-created @aws-sdk/client-s3 S3Client — core does not create or store one.
+
+await core.utils.email.sendEmail({ transporter, from, to, subject, html, text });
+await core.utils.email.sendTemplateEmail({ transporter, from, to, subject, templateName, context });
+await core.utils.sms.sendOtp({ twilioClient, from, to, code, ttlMinutes });
+await core.utils.notifier.notifyEmail({ transporter, ...});   // thin wrapper over email/sms with error swallowing
+await core.utils.notifier.notifySMS({ twilioClient, ...});
+
+const value = await core.utils.config.getConfig("CASHBACK_PERCENT", 2); // Mongo-backed KV, short in-memory cache
+await core.utils.config.setConfig("CASHBACK_PERCENT", "5", "number");
+
+core.utils.metrics.observeRequest(req, res, durationSeconds);
+app.get("/metrics", core.utils.metrics.exposeMetrics); // Prometheus text format
+
+core.utils.tracing.initTracing({ serviceName, endpoint, consoleEnabled, logger });
+await core.utils.registry.registerService({ registryUrl, name, version, port, healthUrl });
+```
+
+`transporter` (nodemailer), `twilioClient` (Twilio SDK), and `s3Client` (`@aws-sdk/client-s3`)
+are always created and owned by the calling service, not by `@godhan/core` — this package has
+no email/SMS/AWS SDK client dependencies of its own, only the S3 v3 request-signing helpers.
+
+## Design notes for anyone extending this package
+
+- No side effects on import beyond what's needed for the exports to work (e.g. `core.utils.metrics`
+  starts collecting default Node.js process metrics on import, because `/metrics` endpoints expect
+  data to be available immediately on first scrape — this is intentional, not incidental).
+- Every function takes credentials/config as arguments — don't add `process.env` reads inside this
+  package; that keeps it testable and prevents one service's env from silently leaking into another's.
+- Keep `package.json` `dependencies` limited to packages actually `import`-ed somewhere in `src/` —
+  this package is a transitive dependency of every Godhan service, so unused deps here cost install
+  time and disk across the whole platform, not just locally.
