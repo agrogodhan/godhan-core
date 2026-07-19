@@ -83,8 +83,13 @@ await core.utils.s3.deleteFromS3({ s3Client, bucket, key });
 await core.utils.email.sendEmail({ transporter, from, to, subject, html, text });
 await core.utils.email.sendTemplateEmail({ transporter, from, to, subject, templateName, context });
 await core.utils.sms.sendOtp({ twilioClient, from, to, code, ttlMinutes });
-await core.utils.notifier.notifyEmail({ transporter, ...});   // thin wrapper over email/sms with error swallowing
+await core.utils.push.sendPush({ messaging, tokens, title, body, data });
+// messaging is a caller-created admin.messaging() (firebase-admin) — core does not create or
+// store one. tokens can be a single FCM device token or an array; data values are coerced to
+// strings (FCM's data-payload requirement). Falls back to a logged mock if messaging is falsy.
+await core.utils.notifier.notifyEmail({ transporter, ...});   // thin wrapper over email/sms/push with error swallowing
 await core.utils.notifier.notifySMS({ twilioClient, ...});
+await core.utils.notifier.notifyPush({ messaging, tokens, title, body, data });
 
 const value = await core.utils.config.getConfig("CASHBACK_PERCENT", 2); // Mongo-backed KV, short in-memory cache
 await core.utils.config.setConfig("CASHBACK_PERCENT", "5", "number");
@@ -96,9 +101,10 @@ core.utils.tracing.initTracing({ serviceName, endpoint, consoleEnabled, logger }
 await core.utils.registry.registerService({ registryUrl, name, version, port, healthUrl });
 ```
 
-`transporter` (nodemailer), `twilioClient` (Twilio SDK), and `s3Client` (`@aws-sdk/client-s3`)
-are always created and owned by the calling service, not by `@godhan/core` — this package has
-no email/SMS/AWS SDK client dependencies of its own, only the S3 v3 request-signing helpers.
+`transporter` (nodemailer), `twilioClient` (Twilio SDK), `s3Client` (`@aws-sdk/client-s3`), and
+`messaging` (`admin.messaging()` from `firebase-admin`) are always created and owned by the
+calling service, not by `@godhan/core` — this package has no email/SMS/AWS/Firebase SDK client
+dependencies of its own, only the S3 v3 request-signing helpers.
 
 ## Design notes for anyone extending this package
 

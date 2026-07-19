@@ -29,6 +29,7 @@ import s3              from './src/utils/s3Utils.js';
 import template        from './src/utils/template.service.js';
 import email           from './src/utils/email.js';
 import sms             from './src/utils/sms.js';
+import push            from './src/utils/push.js';
 import notifier        from './src/utils/notifier.js';
 import config          from './src/utils/config.js';
 import metrics         from './src/utils/metrics.js';
@@ -76,6 +77,7 @@ const core = {
     template,
     email,
     sms,
+    push,
     notifier,
     config,
     metrics,
