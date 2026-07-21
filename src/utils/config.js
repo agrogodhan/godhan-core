@@ -15,6 +15,10 @@ import coreLogger from './logger.js';
  * Usage:
  *   const rate = await core.utils.config.getConfig('CASHBACK_PERCENT', 5);
  *   await core.utils.config.setConfig('CASHBACK_PERCENT', '10', 'number', appLogger);
+ *
+ * For Mongoose virtual getters, which run synchronously during document serialization and can't
+ * await: call core.utils.config.primeConfig('KEY', default) once at server startup, then read it
+ * synchronously in the virtual via core.utils.config.getConfigSync('KEY', default).
  */
 
 const CACHE_TTL_MS = 30_000;
@@ -53,6 +57,24 @@ async function getConfig(key, defaultValue) {
   return value;
 }
 
+// Synchronous read of whatever's currently cached — for call sites that can't await, namely
+// Mongoose virtual getters (they run during document serialization, not as part of any request's
+// async flow). Falls back to defaultValue if nothing has been cached yet, which is why callers
+// using this must also call primeConfig for the same key at service startup, so the real value is
+// warm before the first document ever gets serialized.
+function getConfigSync(key, defaultValue) {
+  const cached = cache.get(key);
+  return cached ? cached.value : defaultValue;
+}
+
+// Populates (and keeps refreshing) the cache for a key a getConfigSync call site depends on.
+// Call once at server startup, and optionally on an interval, so a setConfig change eventually
+// reaches synchronous readers too — getConfig's own cache TTL already handles the refresh cadence
+// once primed, this just does the first, necessary async fetch.
+async function primeConfig(key, defaultValue) {
+  await getConfig(key, defaultValue);
+}
+
 async function setConfig(key, value, type = 'string', logger = coreLogger) {
   const Config = getModel();
   await Config.findOneAndUpdate(
@@ -64,5 +86,5 @@ async function setConfig(key, value, type = 'string', logger = coreLogger) {
   logger.info('[core.config] set', { key, type });
 }
 
-const config = { getConfig, setConfig };
+const config = { getConfig, getConfigSync, primeConfig, setConfig };
 export default config;
