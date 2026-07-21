@@ -20,6 +20,11 @@ function createAuth(secret) {
   return function authMiddleware(req, res, next) {
     const header = req.headers.authorization;
     if (!header || !header.startsWith('Bearer ')) {
+      // WWW-Authenticate is what lets Ktor (and other spec-compliant HTTP clients) recognize
+      // this 401 as a Bearer challenge and trigger their token-refresh-and-retry flow. Without
+      // it, clients have no signal to distinguish "your token is stale, refresh it" from any
+      // other 401 and silently give up instead of retrying — see godhan-app's ApiClient.kt.
+      res.set('WWW-Authenticate', 'Bearer');
       return response.error(res, null, 'Unauthorized: missing token', 401);
     }
     const token = header.slice(7);
@@ -27,6 +32,7 @@ function createAuth(secret) {
       req.user = jwtUtils.verify(token, { secret });
       next();
     } catch {
+      res.set('WWW-Authenticate', 'Bearer');
       return response.error(res, null, 'Unauthorized: invalid or expired token', 401);
     }
   };

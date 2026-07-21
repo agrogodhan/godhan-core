@@ -13,6 +13,7 @@ export default function role(requiredRole) {
 
   return function roleMiddleware(req, res, next) {
     if (!req.user) {
+      res.set('WWW-Authenticate', 'Bearer');
       return response.error(res, null, 'Unauthorized', 401);
     }
     if (!allowed.includes(req.user.role)) {
