@@ -15,7 +15,7 @@ const configs = [
   // cattle-service — breeding cycle
   { key: "GESTATION_DAYS_COW", value: 283, type: "number", note: "Gestation length assumed for cows (days)" },
   { key: "GESTATION_DAYS_BUFFALO", value: 310, type: "number", note: "Gestation length assumed for buffalo (days)" },
-  { key: "PD_CONFIRM_DAYS", value: 90, type: "number", note: "Days after AI before a pregnancy-confirmation reminder fires" },
+  { key: "PD_CONFIRM_DAYS", value: 21, type: "number", note: "Days after AI before a returned-heat/pregnancy-watch reminder fires" },
   { key: "CALVING_WINDOW_DAYS", value: 3, type: "number", note: "± window shown around the estimated calving date" },
   { key: "CALVING_DUE_SOON_DAYS", value: 7, type: "number", note: "How many days before the calving window to start reminding" },
   { key: "VACCINATION_DUE_SOON_DAYS", value: 7, type: "number", note: "How many days before a vaccination's nextDueDate to start reminding" },
