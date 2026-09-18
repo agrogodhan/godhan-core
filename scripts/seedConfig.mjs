@@ -19,8 +19,29 @@ const configs = [
   { key: "CALVING_WINDOW_DAYS", value: 3, type: "number", note: "± window shown around the estimated calving date" },
   { key: "CALVING_DUE_SOON_DAYS", value: 7, type: "number", note: "How many days before the calving window to start reminding" },
   { key: "VACCINATION_DUE_SOON_DAYS", value: 7, type: "number", note: "How many days before a vaccination's nextDueDate to start reminding" },
+  { key: "FIRST_BREEDING_AGE_MONTHS", value: 15, type: "number", note: "Age a heifer is prompted to start her first-breeding heat watch" },
+  {
+    key: "VACCINATION_SCHEDULE", type: "string",
+    note: "cattle-service: age-based vaccination/deworming schedule by species — see cattle.service.js's DEFAULT_VACCINATION_SCHEDULE comment for sourcing/caveats",
+    value: JSON.stringify({
+      cow: [
+        { key: "deworming_first", name: "Deworming", recordType: "deworming", dueAgeMonths: 1, recurring: true, intervalMonths: 3 },
+        { key: "fmd", name: "FMD (Foot & Mouth Disease)", recordType: "vaccination", dueAgeMonths: 4, recurring: true, intervalMonths: 6 },
+        { key: "hs_bq", name: "HS/BQ (Hemorrhagic Septicemia & Black Quarter)", recordType: "vaccination", dueAgeMonths: 6, recurring: true, intervalMonths: 12 },
+        { key: "brucellosis", name: "Brucellosis", recordType: "vaccination", dueAgeMonths: 4, recurring: false, femaleOnly: true },
+      ],
+      buffalo: [
+        { key: "deworming_first", name: "Deworming", recordType: "deworming", dueAgeMonths: 1, recurring: true, intervalMonths: 3 },
+        { key: "fmd", name: "FMD (Foot & Mouth Disease)", recordType: "vaccination", dueAgeMonths: 4, recurring: true, intervalMonths: 6 },
+        { key: "hs_bq", name: "HS/BQ (Hemorrhagic Septicemia & Black Quarter)", recordType: "vaccination", dueAgeMonths: 6, recurring: true, intervalMonths: 12 },
+        { key: "brucellosis", name: "Brucellosis", recordType: "vaccination", dueAgeMonths: 4, recurring: false, femaleOnly: true },
+      ],
+      goat: [],
+    }),
+  },
   // cattle-service — marketplace eligibility
   { key: "MARKETPLACE_ELIGIBLE_DAYS", value: 90, type: "number", note: "Days of continuous IoT pairing required before a cattle can be listed" },
+  { key: "DRY_OFF_GAP_DAYS", value: 14, type: "number", note: "Days since a cow's last milk log before her lactationStatus reads 'dry' instead of 'milking'" },
   // cattle-service — revenue planner
   { key: "CREDIT_LIMIT_MONTHS_MULTIPLE", value: 4, type: "number", note: "Suggested credit limit = avg monthly net profit × this" },
   // cattle-service — milk pricing platform defaults (per-farmer config still overrides these)
